@@ -40,6 +40,7 @@ public class ImagesChooserFragment extends FragmentHelper {
     private ImagesListAdapter adapter;
     private List<String> imagePaths;
     private ListView listViewImages;
+    private Menu menu;
     private View contentView;
     private View buttonAddImage;
     private View emptyListView;
@@ -134,6 +135,7 @@ public class ImagesChooserFragment extends FragmentHelper {
     private void onImageSelected(Intent imageReturnedIntent) {
         imagePaths.add(extractImagePath(imageReturnedIntent));
         adapter.notifyDataSetChanged();
+        updateMenu(menu);
     }
 
     private String extractImagePath(Intent imageReturnedIntent) {
@@ -172,19 +174,29 @@ public class ImagesChooserFragment extends FragmentHelper {
     private void onRemoveImage(int imagePosition) {
         imagePaths.remove(imagePosition);
         adapter.notifyDataSetChanged();
+        updateMenu();
+    }
+
+    private void updateMenu() {
+        updateMenu(menu);
     }
 
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         super.onCreateOptionsMenu(menu, inflater);
+        this.menu = menu;
         menu.add(Menu.NONE, MENU_ITEM_SLIDE_SHOW, Menu.NONE, R.string.slide_show);
     }
 
     @Override
     public void onPrepareOptionsMenu(Menu menu) {
         super.onPrepareOptionsMenu(menu);
+        updateMenu();
+    }
+
+    private void updateMenu(Menu menu) {
         MenuItem menuItemSlideShow = menu.findItem(MENU_ITEM_SLIDE_SHOW);
-        boolean slideShowIsAvailable = (getNumberOfImages() > 0);
+        boolean slideShowIsAvailable = (getNumberOfImages() > 1);
         menuItemSlideShow.setVisible(slideShowIsAvailable);
     }
 
