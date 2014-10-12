@@ -1,26 +1,20 @@
 package imagesslideshow.learning.cleancoder.com.imagesslideshow.slideshow;
 
 import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.drawable.BitmapDrawable;
-import android.os.Build;
 import android.os.Handler;
 import android.util.Log;
 import android.view.View;
 import android.view.animation.Animation;
-import android.widget.ImageView;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ScheduledExecutorService;
 
 import imagesslideshow.learning.cleancoder.com.imagesslideshow.R;
 
 /**
  * Created by lsemenov on 11.10.2014.
  */
-public class SlideShowController {
+public class SlideShowController<ItemType, TransformedItemType, ViewType extends View> {
 
     private static class Visibility {
         static final int SHOW_VIEW = View.VISIBLE;
@@ -29,38 +23,37 @@ public class SlideShowController {
 
     private final Object LOCK_START = new Object();
     private final Object LOCK_STOP = new Object();
-    private final Object LOCK_SLIDING = new Object();
 
     private final Handler handler = new Handler();
 
     private final Context context;
-    private final int numberOfImages;
-    private final List<String> imagePaths;
-    private final List<Bitmap> bitmaps;
+    private final int numberOfItems;
+    private final List<ItemType> items;
+    private final List<TransformedItemType> transformedItems;
     private final long animationDuration;
     private final long period;
     private final SlideShow slideShow;
-    private boolean isSliding;
+    private final SlideShowOption<ItemType, TransformedItemType, ViewType> slideShowOption;
     private boolean isStarted;
     private boolean isStopped;
-    private ImageView imageView1;
-    private ImageView imageView2;
-    private ScheduledExecutorService scheduler;
+    private ViewType view1;
+    private ViewType view2;
 
     SlideShowController(SlideShow slideShow,
                         Context context,
-                        ImageView imageView1,
-                        ImageView imageView2) {
+                        ViewType view1,
+                        ViewType view2,
+                        SlideShowOption<ItemType, TransformedItemType, ViewType> slideShowOption) {
+        this.slideShowOption = slideShowOption;
         this.slideShow = slideShow;
         this.animationDuration = getAnimationDuration(context, slideShow);
-        this.imagePaths = slideShow.getImagePaths();
-        this.numberOfImages = imagePaths.size();
-        this.bitmaps = newArrayListWithSize(imagePaths.size());
+        this.items = slideShow.getItems();
+        this.numberOfItems = items.size();
+        this.transformedItems = newArrayListWithSize(items.size());
         this.period = slideShow.getPeriod();
         this.context = context;
-        this.imageView1 = imageView1;
-        this.imageView2 = imageView2;
-        this.isSliding = false;
+        this.view1 = view1;
+        this.view2 = view2;
         this.isStarted = false;
         this.isStopped = false;
     }
@@ -90,8 +83,8 @@ public class SlideShowController {
             handler.post(new Runnable() {
                 @Override
                 public void run() {
-                    setImage(imageView1, null);
-                    setImage(imageView2, null);
+                    slideShowOption.render(null, view1);
+                    slideShowOption.render(null, view2);
                     slider.run();
                 }
             });
@@ -104,106 +97,57 @@ public class SlideShowController {
                 if (isStopped) {
                     return;
                 }
-                synchronized (LOCK_SLIDING) {
-                    if (isSliding) {
-                        return;
-                    }
-                    isSliding = true;
-                    try {
-                        slide();
-                    } catch (Throwable exception) {
-                        exception.printStackTrace();
-                    }
+                try {
+                    slide();
+                } catch (Throwable exception) {
+                    exception.printStackTrace();
                 }
             }
         }
     };
 
     private void slide() {
-        startAnimationHideImage(imageView1);
-        startAnimationShowImage(imageView2, slideShow.currentImage);
+        startAnimationHideImage(view1);
+        startAnimationShowImage(view2, slideShow.currentImage);
         handler.postDelayed(new Runnable() {
             @Override
             public void run() {
-                setImage(imageView1, null);
-                imageView1.setVisibility(Visibility.HIDE_VIEW);
-                imageView2.setVisibility(Visibility.SHOW_VIEW);
+                slideShowOption.render(null, view1);
+                view1.setVisibility(Visibility.HIDE_VIEW);
+                view1.clearAnimation();
+                view2.clearAnimation();
                 swapImageViews();
                 slideShow.currentImage = nextImageIndex();
-                synchronized (LOCK_SLIDING) {
-                    isSliding = false;
-                }
                 handler.postDelayed(slider, period);
             }
         }, animationDuration);
     }
 
-    private void startAnimationHideImage(final ImageView imageView) {
+    private void startAnimationHideImage(final ViewType imageView) {
         handler.post(new Runnable() {
             @Override
             public void run() {
-                imageView.clearAnimation();
-                Animation animationHide = SlideShowAnimation.newInstance(
-                        SlideShowAnimation.Action.DISAPPEAR, animationDuration);
-                animationHide.setAnimationListener(new Animation.AnimationListener() {
-                    @Override
-                    public void onAnimationStart(Animation animation) {
-                        // skip
-                        Log.d("Leonid", "Hide image animation is started");
-                    }
-
-                    @Override
-                    public void onAnimationEnd(Animation animation) {
-                        // skip
-                    }
-
-                    @Override
-                    public void onAnimationRepeat(Animation animation) {
-                        // skip
-                    }
-                });
+                Animation animationHide = SlideShowAnimation.newDisappearance().duration(animationDuration);
                 imageView.startAnimation(animationHide);
             }
         });
     }
 
-    private static void stopAnimationIfStarted(View view) {
-        if (true) {
-            return;
-        }
-        Animation animation = view.getAnimation();
-        if (animation != null) {
-            animation.cancel();
-        }
-        view.clearAnimation();
-    }
-
-    private void setImage(View view, Bitmap bitmap) {
-        BitmapDrawable drawable = new BitmapDrawable(context.getResources(), bitmap);
-        if (Build.VERSION.SDK_INT >= 16) {
-            view.setBackground(drawable);
-        } else {
-            view.setBackgroundDrawable(drawable);
-        }
-    }
-
-    private void startAnimationShowImage(final ImageView imageView, final int index) {
-        final Bitmap bitmap = getBitmap(index);
+    private void startAnimationShowImage(final ViewType view, final int index) {
+        final TransformedItemType transformedItem = getTransformedItem(index);
         handler.post(new Runnable() {
             @Override
             public void run() {
-                stopAnimationIfStarted(imageView);
-                imageView.setVisibility(Visibility.HIDE_VIEW);
-                setImage(imageView, bitmap);
-                Animation animationShow = SlideShowAnimation.newInstance(
-                        SlideShowAnimation.Action.APPEAR, animationDuration);
+                view.setVisibility(Visibility.HIDE_VIEW);
+                slideShowOption.render(transformedItem, view);
+                Animation animationShow = SlideShowAnimation.newAppearance().duration(animationDuration);
                 animationShow.setAnimationListener(new Animation.AnimationListener() {
                     @Override
                     public void onAnimationStart(Animation animation) {
                         handler.post(new Runnable() {
                             @Override
                             public void run() {
-                                imageView.setVisibility(Visibility.SHOW_VIEW);
+                                view.setVisibility(Visibility.SHOW_VIEW);
                             }
                         });
                     }
@@ -218,31 +162,31 @@ public class SlideShowController {
                         // skip
                     }
                 });
-                imageView.startAnimation(animationShow);
-                imageView.bringToFront();
+                view.startAnimation(animationShow);
+                view.bringToFront();
             }
         });
     }
 
-    private Bitmap getBitmap(int index) {
-        Bitmap bitmap = bitmaps.get(index);
-        if (bitmap == null) {
-            String imagePath = imagePaths.get(index);
-            bitmap = BitmapFactory.decodeFile(imagePath);
-            bitmaps.set(index, bitmap);
+    private TransformedItemType getTransformedItem(int index) {
+        TransformedItemType transformedItem = transformedItems.get(index);
+        if (transformedItem == null) {
+            ItemType item = items.get(index);
+            transformedItem = slideShowOption.transform(item);
+            transformedItems.set(index, transformedItem);
         }
-        return bitmap;
+        return transformedItem;
     }
 
     private void swapImageViews() {
-        ImageView temp = imageView1;
-        imageView1 = imageView2;
-        imageView2 = temp;
+        ViewType temp = view1;
+        view1 = view2;
+        view2 = temp;
     }
 
     private int nextImageIndex() {
         int index = slideShow.currentImage + 1;
-        return (index < numberOfImages) ? index : 0;
+        return (index < numberOfItems) ? index : 0;
     }
 
     public void stop() {
@@ -257,23 +201,17 @@ public class SlideShowController {
                 }
                 isStopped = true;
                 releaseResources();
-                scheduler.shutdown();
             }
         }
     }
 
     private void releaseResources() {
         String prefix = getClass().getName() + ".releaseResources(): ";
-        for (int i = 0; i < bitmaps.size(); ++i) {
-            Log.d("Leonid", prefix + "recycle bitmap #" + i);
-            recycleBitmap(bitmaps.get(i));
-            bitmaps.set(i, null);
-        }
-    }
-
-    private static void recycleBitmap(Bitmap bitmap) {
-        if (bitmap != null && !bitmap.isRecycled()) {
-            bitmap.recycle();
+        for (int i = 0; i < transformedItems.size(); ++i) {
+            Log.d("Leonid", prefix + "recycle item #" + i);
+            slideShowOption.releaseResources(items.get(i), transformedItems.get(i));
+            items.set(i, null);
+            transformedItems.set(i, null);
         }
     }
 

@@ -3,9 +3,8 @@ package imagesslideshow.learning.cleancoder.com.imagesslideshow.slideshow;
 import android.content.Context;
 import android.os.Parcel;
 import android.os.Parcelable;
-import android.widget.ImageView;
+import android.view.View;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -13,7 +12,7 @@ import java.util.List;
 /**
  * Created by lsemenov on 11.10.2014.
  */
-public class SlideShow implements Parcelable {
+public class SlideShow<ItemType> implements Parcelable {
 
     public static final Creator<SlideShow> CREATOR = new Creator<SlideShow>() {
         @Override
@@ -27,58 +26,46 @@ public class SlideShow implements Parcelable {
         }
     };
 
+
     private static final String PERIOD_UNIT = "ms";
 
     private static final long MIN_PERIOD = 100;
     private static final long MIN_ANIMATION_DURATION = 100;
 
+
     int currentImage;
+    private final Class<ItemType> itemType;
 
     // required parameters
-    private List<String> imagePaths;
+    private List<ItemType> items;
     private Long period;
 
     // optional parameters
     private Long animationDuration;
 
 
-    public SlideShow() {
-        currentImage = 0;
-        imagePaths = null;
-        period = null;
-        animationDuration = null;
+    public SlideShow(Class<ItemType> itemType) {
+        this.itemType = itemType;
+        this.items = null;
+        this.period = null;
+        this.animationDuration = null;
+        this.currentImage = 0;
     }
 
-    public SlideShow(Parcel in) {
-        currentImage = in.readInt();
-        imagePaths = (List<String>) in.readSerializable();
-        period = (Long) in.readSerializable();
-        animationDuration = (Long) in.readSerializable();
-    }
 
-    @Override
-    public void writeToParcel(Parcel out, int i) {
-        out.writeInt(currentImage);
-        out.writeSerializable((Serializable) imagePaths);
-        out.writeSerializable(period);
-        out.writeSerializable(animationDuration);
-    }
-
-    @Override
-    public int describeContents() {
-        return 0;
-    }
-
-    public SlideShow imagePaths(List<String> imagePaths) {
-        if (imagePaths.isEmpty()) {
-            throw new IllegalArgumentException("You couldn't set empty list of image paths.");
+    public SlideShow items(List<ItemType> items) {
+        if (items == null) {
+            throw new NullPointerException("items can't be null");
         }
-        this.imagePaths = imagePaths;
+        if (items.isEmpty()) {
+            throw new IllegalArgumentException("You couldn't set empty list of items.");
+        }
+        this.items = items;
         return this;
     }
 
-    List<String> getImagePaths() {
-        return new ArrayList<String>(imagePaths);
+    List<ItemType> getItems() {
+        return new ArrayList<ItemType>(items);
     }
 
     public SlideShow period(long period) {
@@ -107,9 +94,13 @@ public class SlideShow implements Parcelable {
         return animationDuration;
     }
 
-    public SlideShowController start(Context context, ImageView imageView1, ImageView imageView2) {
+    public <TransformedItemType, ViewType extends View> SlideShowController
+                            start(Context context,
+                                  ViewType view1,
+                                  ViewType view2,
+                                  SlideShowOption<ItemType, TransformedItemType, ViewType> slideShowOption) {
         checkAllRequiredParametersAreSet();
-        SlideShowController controller = new SlideShowController(this, context, imageView1, imageView2);
+        SlideShowController controller = new SlideShowController(this, context, view1, view2, slideShowOption);
         controller.start();
         return controller;
     }
@@ -125,7 +116,31 @@ public class SlideShow implements Parcelable {
     }
 
     private Iterable<? extends Object> getRequiredParameters() {
-        return Arrays.asList(imagePaths, period);
+        return Arrays.asList(items, period);
+    }
+
+
+    public SlideShow(Parcel in) {
+        itemType = (Class<ItemType>) in.readSerializable();
+        items = new ArrayList<ItemType>();
+        in.readList(items, itemType.getClassLoader());
+        period = (Long) in.readSerializable();
+        animationDuration = (Long) in.readSerializable();
+        currentImage = in.readInt();
+    }
+
+    @Override
+    public void writeToParcel(Parcel out, int i) {
+        out.writeSerializable(itemType);
+        out.writeList(items);
+        out.writeSerializable(period);
+        out.writeSerializable(animationDuration);
+        out.writeInt(currentImage);
+    }
+
+    @Override
+    public int describeContents() {
+        return 0;
     }
 
 }

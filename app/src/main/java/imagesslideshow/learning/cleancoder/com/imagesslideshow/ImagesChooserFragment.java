@@ -205,7 +205,7 @@ public class ImagesChooserFragment extends FragmentHelper {
 
     private void onSlideShow() {
         Intent intent = new Intent(getActivity(), SlideShowActivity.class);
-        SlideShow slideShow = new SlideShow().imagePaths(imagePaths).period(5000);
+        SlideShow<String> slideShow = new SlideShow(String.class).items(imagePaths).period(5000);
         SlideShowActivity.insertArguments(intent, slideShow);
         startActivity(intent);
     }

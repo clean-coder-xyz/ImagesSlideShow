@@ -7,13 +7,14 @@ import android.widget.ImageView;
 
 import imagesslideshow.learning.cleancoder.com.imagesslideshow.slideshow.SlideShow;
 import imagesslideshow.learning.cleancoder.com.imagesslideshow.slideshow.SlideShowController;
+import imagesslideshow.learning.cleancoder.com.imagesslideshow.slideshow.SlideShowOptions;
 
 
 public class SlideShowActivity extends ActionBarActivity {
 
     private static final String KEY_SLIDE_SHOW = "KEY_SLIDE_SHOW";
 
-    private SlideShow slideShow;
+    private SlideShow<String> slideShow;
     private SlideShowController slideShowController;
 
     public static void insertArguments(Intent intent, SlideShow slideShow) {
@@ -33,7 +34,7 @@ public class SlideShowActivity extends ActionBarActivity {
         slideShow = (savedInstanceState == null)
                             ? (SlideShow) getIntent().getParcelableExtra(KEY_SLIDE_SHOW)
                             : (SlideShow) savedInstanceState.getParcelable(KEY_SLIDE_SHOW);
-        slideShowController = slideShow.start(this, imageView1, imageView2);
+        slideShowController = slideShow.start(this, imageView1, imageView2, SlideShowOptions.IMAGES_FROM_PATHS);
     }
 
     private ImageView findImageViewById(int id) {

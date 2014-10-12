@@ -20,7 +20,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Created by lsemenov on 10.10.2014.
  */
-public class SlideShow2 {
+public class OldSlideShow {
     private static final int DEFAULT_DELAY_IN_SECONDS = 6;
 
     private final Object LOCK_START = new Object();
@@ -43,7 +43,7 @@ public class SlideShow2 {
     private List<ImageMeta> images;
     private ScheduledExecutorService scheduler;
 
-    public SlideShow2(Context context, ImageView imageView1, ImageView imageView2) {
+    public OldSlideShow(Context context, ImageView imageView1, ImageView imageView2) {
         this.context = context;
         this.animationShow = AnimationUtils.loadAnimation(context, R.anim.slide_show_appear);
         this.animationHide = AnimationUtils.loadAnimation(context, R.anim.slide_show_disappear);
